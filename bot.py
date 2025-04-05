@@ -2,6 +2,8 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import os
 import json
+from flask import Flask
+import threading
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
@@ -53,11 +55,11 @@ async def set_source(client, message: Message):
     user_id = str(message.from_user.id)
 
     try:
-        member = await bot.get_chat_member(channel_id, "me")  # Await যোগ করা হয়েছে
+        member = await bot.get_chat_member(channel_id, "me")
         if not (member.status in ["administrator", "creator"]):
-            return await message.reply_text("⚠️ বট এখনও ওই চ্যানেলের অ্যাডমিন না। আগে বটকে এডমিন করুন তারপর আবার চেষ্টা করুন।")
+            return await message.reply_text("⚠️ বট ওই চ্যানেলে অ্যাডমিন না। আগে অ্যাডমিন করুন।")
     except Exception:
-        return await message.reply_text("❌ চ্যানেল আইডি ভুল অথবা বট ওই চ্যানেলে অ্যাডেড নেই।")
+        return await message.reply_text("❌ চ্যানেল আইডি ভুল অথবা বট ওই চ্যানেলে নেই।")
 
     user_settings[user_id] = user_settings.get(user_id, {})
     user_settings[user_id]["source"] = str(channel_id)
@@ -73,7 +75,7 @@ async def set_destination(client, message: Message):
     user_id = str(message.from_user.id)
 
     try:
-        member = await bot.get_chat_member(channel_id, "me")  # Await যোগ করা হয়েছে
+        member = await bot.get_chat_member(channel_id, "me")
         if not (member.status in ["administrator", "creator"]):
             return await message.reply_text("⚠️ বট ওই চ্যানেলে পোস্ট করতে পারবে না। আগে বটকে এডমিন বানান।")
     except Exception:
@@ -92,8 +94,20 @@ async def forward_messages(client, message: Message):
                 try:
                     await bot.copy_message(chat_id=settings["destination"], from_chat_id=message.chat.id, message_id=message.message_id)
                 except Exception:
-                    pass  # Avoid crashing on any single user error
+                    pass
+
+# Flask setup
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
     load_settings()
+    threading.Thread(target=run_flask).start()  # Run Flask in background
     bot.run()
+    
